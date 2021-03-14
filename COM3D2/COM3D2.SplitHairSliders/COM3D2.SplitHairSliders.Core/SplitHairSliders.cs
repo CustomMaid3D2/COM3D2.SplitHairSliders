@@ -1,6 +1,7 @@
 ﻿using BepInEx;
 using GearMenu;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -16,6 +17,7 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
     {
         private UnityEngine.GameObject managerObject;
         private UnityEngine.GameObject menuButton;
+        private static SplitHairSliders this1 ;
 
         private static string newMenuPath = UTY.gameProjectPath + "\\Mod\\[SplitHairSliders]";
 
@@ -29,6 +31,7 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
 
         public void Awake()
         {
+            this1 = this;
             //Copied from examples
             UnityEngine.Debug.Log("Split Hair Sliders: Awake");
             UnityEngine.Object.DontDestroyOnLoad((UnityEngine.Object)this);
@@ -94,43 +97,56 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
             }
         }
 
+        static bool isRunExportAllHairMenus=false;
 
-        public static void exportAllHairMenus()
+        static bool[] run=new bool[3];
+
+        public  IEnumerator exportAllHairMenus()
         {
+            status = "STARTING...";
+            isRunExportAllHairMenus = true;
+
             //Create Directory
-            if (!Directory.Exists(newMenuPath))
-            {
+            if (!Directory.Exists(newMenuPath)){
                 Directory.CreateDirectory(newMenuPath);
             }
 
-            string[] fileNames;
-
             //COM
             UnityEngine.Debug.Log("Exporting COM Menus Start");
-            fileNames = GameUty.FileSystem.GetFileListAtExtension(".menu");
-            exportAllHairMenus(fileNames, false);
+            this1.StartCoroutine(exportAllHairMenus(GameUty.FileSystem.GetFileListAtExtension(".menu"), false,0));
             UnityEngine.Debug.Log("Exporting COM Menus End");
 
             //CM
             UnityEngine.Debug.Log("Exporting CM Menus Start");
-            fileNames = GameUty.FileSystemOld.GetFileListAtExtension(".menu");
-            exportAllHairMenus(fileNames, false);
+            this1.StartCoroutine(exportAllHairMenus(GameUty.FileSystemOld.GetFileListAtExtension(".menu"), false,1));
             UnityEngine.Debug.Log("Exporting CM Menus End");
 
             //Mods
             if (includeMods)
             {
                 UnityEngine.Debug.Log("Exporting MOD Menus Start");
-                fileNames = GameUty.FileSystemMod.GetFileListAtExtension(".menu");
-                exportAllHairMenus(fileNames, true);
+                this1.StartCoroutine(exportAllHairMenus(GameUty.FileSystemMod.GetFileListAtExtension(".menu"), true,2));
                 UnityEngine.Debug.Log("Exporting MOD Menus End");
             }
 
+            yield return new WaitWhile(() =>
+            {
+                return run.Contains<bool>(true);// 하나라도 진행중이면 대기
+            }
+            );
+
             refreshModFolder();
+
+            isRunExportAllHairMenus = false;
+            status = "DONE Reload EDIT";
+
+            yield return null;
         }
 
-        private static void exportAllHairMenus(string[] fileNames, bool isModList)
+        private static IEnumerator exportAllHairMenus(string[] fileNames, bool isModList,int num)
         {
+            run[num] = true;            
+            UnityEngine.Debug.Log("Exporting Menus Start"+ fileNames.Length);
             Maid maid = GameMain.Instance.CharacterMgr.GetMaid(0);
             if (maid != null)
             {
@@ -198,7 +214,7 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
                                         }
                                     }
 
-                                    createNewHairMenu(fileName, listTarget, menu, false);
+                                    this1.StartCoroutine(createNewHairMenu(fileName, listTarget, menu, false));
                                 }
                                 else
                                 {
@@ -220,14 +236,14 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
                                             target.vScaleMin = orig.vScaleMin;
                                             target.vScaleMax = orig.vScaleMax;
                                             listTarget.Add(target);
-                                        }
-                                        createNewHairMenu(fileName, listTarget, menu, true);
+                                        }                                        
+                                        this1.StartCoroutine(createNewHairMenu(fileName, listTarget, menu, true));
                                     }
                                     else
                                     {
                                         //COM
-                                        UnityEngine.Debug.Log("Creating Menu for standard");
-                                        createNewHairMenu(fileName, null, menu, true);
+                                        //UnityEngine.Debug.Log("Creating Menu for standard");                                        
+                                        this1.StartCoroutine(createNewHairMenu(fileName, null, menu, true));
                                     }
                                 }
 
@@ -238,10 +254,13 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
                     }
                 }
             }
+            UnityEngine.Debug.Log("Exporting Menus End" + fileNames.Length);
+            run[num] = false;            
+            yield return null;
         }
         private static MenuObj getMenu(string menuFileName)
         {
-            UnityEngine.Debug.Log("Fetching Menu " + menuFileName);
+            //UnityEngine.Debug.Log("Fetching Menu " + menuFileName);
 
             MenuObj menu = new MenuObj();
             byte[] cd;
@@ -249,14 +268,14 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
             {
                 if (afileBase != null && afileBase.IsValid())
                 {
-                    UnityEngine.Debug.Log("Reading bytes");
+                    //UnityEngine.Debug.Log("Reading bytes");
 
                     cd = afileBase.ReadAll();
 
                     using (BinaryReader binaryReader = new BinaryReader((Stream)new MemoryStream(cd), Encoding.UTF8))
                     {
                         //Useless header info???
-                        UnityEngine.Debug.Log("Reading header");
+                        //UnityEngine.Debug.Log("Reading header");
                         menu.header.CM3D2_MENU = binaryReader.ReadString();
                         menu.header.temp1 = binaryReader.ReadInt32();
                         menu.header.temp2 = binaryReader.ReadString();
@@ -267,7 +286,7 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
 
                         bool end = false;
 
-                        UnityEngine.Debug.Log("Reading commands");
+                        //UnityEngine.Debug.Log("Reading commands");
                         //Blocks
                         do
                         {
@@ -335,7 +354,7 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
             return menu;
         }
 
-        public static void createNewHairMenu(string hairMenuFileName, List<HairLengthTargetObj> listTarget, MenuObj menu, bool useExistingLengths)
+        public static IEnumerator createNewHairMenu(string hairMenuFileName, List<HairLengthTargetObj> listTarget, MenuObj menu, bool useExistingLengths)
         {
             //Delete Existing
             if (File.Exists(Path.Combine(newMenuPath, hairMenuFileName)))
@@ -434,6 +453,8 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
             //Add the new menu to the file system
             UnityEngine.Debug.Log("Adding new Menu to MOD file system: Ext_" + hairMenuFileName);
             GameUty.FileSystemMod.FileOpen(Path.Combine(newMenuPath, "Ext_" + hairMenuFileName));
+
+            yield return null;
         }
 
         private static void refreshModFolder()
@@ -904,9 +925,11 @@ namespace COM3D2.SplitHairSliders.Plugin.Core
 
             if (GUILayout.Button("Export"))
             {
-                status = "STARTING...";
-                exportAllHairMenus();
-                status = "DONE Reload EDIT";
+                if (!isRunExportAllHairMenus)
+                {
+                    StartCoroutine( exportAllHairMenus());
+                }
+                
             }
             //if (GUILayout.Button("Hair Front"))
             //{

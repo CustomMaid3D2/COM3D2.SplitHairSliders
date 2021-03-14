@@ -1,0 +1,6 @@
+G:\repos\COM3D2.SplitHairSliders\bin\Debug\COM3D2.SplitHairSliders.dll
+G:\repos\COM3D2.SplitHairSliders\bin\Debug\COM3D2.SplitHairSliders.pdb
+G:\repos\COM3D2.SplitHairSliders\obj\Debug\COM3D2.SplitHairSliders.csproj.CoreCompileInputs.cache
+G:\repos\COM3D2.SplitHairSliders\obj\Debug\COM3D2.SplitHairSliders.dll
+G:\repos\COM3D2.SplitHairSliders\obj\Debug\COM3D2.SplitHairSliders.pdb
+G:\repos\COM3D2.SplitHairSliders\obj\Debug\COM3D2.SplitHairSliders.csprojAssemblyReference.cache
